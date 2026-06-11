@@ -1087,15 +1087,21 @@
       align-items: center;
       justify-content: center;
       padding: 24px;
-      z-index: 100;
+      z-index: 1000;
       opacity: 0;
       visibility: hidden;
+      pointer-events: none;
       transition: opacity 0.25s, visibility 0.25s;
+    }
+
+    .modal-overlay[hidden] {
+      display: none !important;
     }
 
     .modal-overlay.open {
       opacity: 1;
       visibility: visible;
+      pointer-events: auto;
     }
 
     .signup-modal {
@@ -1514,7 +1520,8 @@
     const signupPhone = document.getElementById('signupPhone');
     const signupEmail = document.getElementById('signupEmail');
 
-    const SIGNUP_DONE_KEY = 'lottoPickerSignedUp';
+    const SIGNUP_REGISTERED_KEY = 'lottoPickerRegistered';
+    const SIGNUP_LEGACY_KEY = 'lottoPickerSignedUp';
 
     const CHAT_API_URL = window.location.protocol === 'file:'
       ? null
@@ -1576,12 +1583,58 @@
       birthDateInput.classList.remove('invalid');
     }
 
+    function isSignupRegistered() {
+      return localStorage.getItem(SIGNUP_REGISTERED_KEY) === '1';
+    }
+
+    function ensureSignupForm() {
+      if (document.getElementById('signupForm')) return;
+
+      signupModalContent.innerHTML = `
+        <h2 id="signupModalTitle">AI 로또 번호 추천 서비스</h2>
+        <p class="modal-desc">앞으로 생년월일과 오늘의 운세를 반영해 AI가 로또 번호를 추천해 드립니다. 무료 가입하고 맞춤 번호를 받아보세요.</p>
+        <form class="signup-form" id="signupForm">
+          <div class="signup-field">
+            <label for="signupName">이름</label>
+            <input type="text" class="form-input" id="signupName" placeholder="홍길동" required autocomplete="name">
+          </div>
+          <div class="signup-field">
+            <label for="signupPhone">전화번호</label>
+            <input type="tel" class="form-input" id="signupPhone" placeholder="010-1234-5678" required autocomplete="tel">
+          </div>
+          <div class="signup-field">
+            <label for="signupEmail">이메일</label>
+            <input type="email" class="form-input" id="signupEmail" placeholder="example@email.com" required autocomplete="email">
+          </div>
+          <span class="form-error" id="signupFormError" role="alert"></span>
+          <div class="signup-actions">
+            <button type="submit" class="btn-primary">무료 가입하기</button>
+            <button type="button" class="btn-secondary" id="signupLaterBtn">나중에 할게요</button>
+          </div>
+        </form>
+      `;
+
+      const form = document.getElementById('signupForm');
+      const laterBtn = document.getElementById('signupLaterBtn');
+      form.addEventListener('submit', handleSignupSubmit);
+      laterBtn.addEventListener('click', closeSignupModal);
+    }
+
+    function scheduleSignupPrompt() {
+      if (isSignupRegistered()) return;
+      setTimeout(openSignupModal, 600);
+    }
+
     function openSignupModal() {
-      if (localStorage.getItem(SIGNUP_DONE_KEY)) return;
-      signupModal.hidden = false;
+      if (isSignupRegistered()) return;
+
+      ensureSignupForm();
+      signupModal.removeAttribute('hidden');
       requestAnimationFrame(() => signupModal.classList.add('open'));
       document.body.style.overflow = 'hidden';
-      signupName.focus();
+
+      const nameInput = document.getElementById('signupName');
+      if (nameInput) nameInput.focus();
     }
 
     function closeSignupModal() {
@@ -1592,10 +1645,21 @@
       }, 250);
     }
 
+    function getSignupFields() {
+      return {
+        form: document.getElementById('signupForm'),
+        error: document.getElementById('signupFormError'),
+        name: document.getElementById('signupName'),
+        phone: document.getElementById('signupPhone'),
+        email: document.getElementById('signupEmail'),
+      };
+    }
+
     function validateSignupForm() {
-      const name = signupName.value.trim();
-      const phone = signupPhone.value.trim();
-      const email = signupEmail.value.trim();
+      const { name: nameInput, phone: phoneInput, email: emailInput } = getSignupFields();
+      const name = nameInput?.value.trim() || '';
+      const phone = phoneInput?.value.trim() || '';
+      const email = emailInput?.value.trim() || '';
 
       if (!name || name.length < 2) {
         return '이름을 2글자 이상 입력해 주세요.';
@@ -1626,31 +1690,34 @@
 
     async function handleSignupSubmit(event) {
       event.preventDefault();
+      const fields = getSignupFields();
       const error = validateSignupForm();
       if (error) {
-        signupFormError.textContent = error;
+        if (fields.error) fields.error.textContent = error;
         return;
       }
 
       if (!SIGNUP_API_URL) {
-        signupFormError.textContent = '가입 기능은 Vercel 배포 후에 사용할 수 있습니다.';
+        if (fields.error) fields.error.textContent = '가입 기능은 Vercel 배포 후에 사용할 수 있습니다.';
         return;
       }
 
-      signupFormError.textContent = '';
-      const submitBtn = signupForm.querySelector('button[type="submit"]');
-      const originalText = submitBtn.textContent;
-      submitBtn.disabled = true;
-      submitBtn.textContent = '가입 중...';
+      if (fields.error) fields.error.textContent = '';
+      const submitBtn = fields.form?.querySelector('button[type="submit"]');
+      const originalText = submitBtn?.textContent || '무료 가입하기';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = '가입 중...';
+      }
 
       try {
         const response = await fetch(SIGNUP_API_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name: signupName.value.trim(),
-            phone: signupPhone.value.trim(),
-            email: signupEmail.value.trim(),
+            name: fields.name?.value.trim(),
+            phone: fields.phone?.value.trim(),
+            email: fields.email?.value.trim(),
             birthDate: birthDateInput.value || null,
           }),
         });
@@ -1660,13 +1727,18 @@
           throw new Error(data.error || `가입에 실패했습니다. (${response.status})`);
         }
 
-        localStorage.setItem(SIGNUP_DONE_KEY, '1');
+        localStorage.setItem(SIGNUP_REGISTERED_KEY, '1');
+        localStorage.removeItem(SIGNUP_LEGACY_KEY);
         showSignupSuccess();
       } catch (submitError) {
-        signupFormError.textContent = submitError.message || '가입 중 오류가 발생했습니다.';
+        if (fields.error) {
+          fields.error.textContent = submitError.message || '가입 중 오류가 발생했습니다.';
+        }
       } finally {
-        submitBtn.disabled = false;
-        submitBtn.textContent = originalText;
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = originalText;
+        }
       }
     }
 
@@ -2150,17 +2222,15 @@
         });
       }
 
-      await animateDraw(newSets[0]);
-
-      history.push(...newSets);
-      renderHistory();
-
-      isDrawing = false;
-      drawBtn.disabled = false;
-      drawBtn.textContent = setCount > 1 ? `${setCount}세트 추첨하기` : '번호 추첨하기';
-
-      if (!localStorage.getItem(SIGNUP_DONE_KEY)) {
-        setTimeout(openSignupModal, 600);
+      try {
+        await animateDraw(newSets[0]);
+        history.push(...newSets);
+        renderHistory();
+      } finally {
+        isDrawing = false;
+        drawBtn.disabled = false;
+        drawBtn.textContent = setCount > 1 ? `${setCount}세트 추첨하기` : '번호 추첨하기';
+        scheduleSignupPrompt();
       }
     }
 
