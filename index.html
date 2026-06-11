@@ -1019,6 +1019,200 @@
       color: var(--error);
     }
 
+    .reviews-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-lg);
+    }
+
+    .review-card {
+      background: var(--canvas);
+      border: 1px solid var(--hairline);
+      border-radius: var(--rounded-lg);
+      padding: var(--space-lg);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .review-card .review-badge {
+      display: inline-flex;
+      align-items: center;
+      align-self: flex-start;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: -0.08px;
+      color: var(--primary);
+      background: rgba(0, 102, 204, 0.08);
+      padding: 4px 10px;
+      border-radius: var(--rounded-pill);
+    }
+
+    .review-card .review-text {
+      font-size: 14px;
+      line-height: 1.43;
+      letter-spacing: -0.224px;
+      color: var(--ink);
+      flex: 1;
+    }
+
+    .review-card .review-author {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: -0.12px;
+      color: var(--ink-muted-80);
+    }
+
+    .review-card .review-meta {
+      font-size: 11px;
+      color: var(--ink-muted-48);
+      letter-spacing: -0.08px;
+    }
+
+    .reviews-note {
+      margin-top: var(--space-md);
+      font-size: 11px;
+      color: var(--ink-muted-48);
+      text-align: center;
+      letter-spacing: -0.08px;
+    }
+
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      backdrop-filter: saturate(180%) blur(8px);
+      -webkit-backdrop-filter: saturate(180%) blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      z-index: 100;
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.25s, visibility 0.25s;
+    }
+
+    .modal-overlay.open {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .signup-modal {
+      width: 100%;
+      max-width: 440px;
+      background: var(--canvas);
+      border-radius: var(--rounded-lg);
+      border: 1px solid var(--hairline);
+      padding: var(--space-xl);
+      box-shadow: rgba(0, 0, 0, 0.22) 3px 5px 30px 0;
+      transform: scale(0.96) translateY(8px);
+      transition: transform 0.25s;
+    }
+
+    .modal-overlay.open .signup-modal {
+      transform: scale(1) translateY(0);
+    }
+
+    .signup-modal h2 {
+      font-size: 21px;
+      font-weight: 600;
+      line-height: 1.19;
+      letter-spacing: 0.231px;
+      color: var(--ink);
+      margin-bottom: 8px;
+    }
+
+    .signup-modal .modal-desc {
+      font-size: 14px;
+      line-height: 1.43;
+      letter-spacing: -0.224px;
+      color: var(--ink-muted-80);
+      margin-bottom: var(--space-lg);
+    }
+
+    .signup-form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .signup-field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .signup-field label {
+      font-size: 14px;
+      font-weight: 600;
+      letter-spacing: -0.224px;
+      color: var(--ink);
+    }
+
+    .signup-field .form-input {
+      border-radius: var(--rounded-sm);
+    }
+
+    .signup-actions {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      margin-top: var(--space-xs);
+    }
+
+    .modal-close-btn {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      width: 32px;
+      height: 32px;
+      border: none;
+      background: var(--surface-chip);
+      border-radius: var(--rounded-full, 9999px);
+      color: var(--ink);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.15s;
+    }
+
+    .modal-close-btn:active {
+      transform: scale(0.95);
+    }
+
+    .signup-modal-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 440px;
+    }
+
+    .signup-success {
+      text-align: center;
+      padding: var(--space-lg) 0;
+    }
+
+    .signup-success h3 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .signup-success p {
+      font-size: 14px;
+      line-height: 1.43;
+      color: var(--ink-muted-80);
+    }
+
+    @media (max-width: 640px) {
+      .reviews-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
     .site-footer {
       background: var(--canvas-parchment);
       padding: 64px 24px;
@@ -1089,6 +1283,7 @@
       <div class="nav-links">
         <a href="#draw">추첨</a>
         <a href="#chatbot">AI 상담</a>
+        <a href="#reviews">후기</a>
         <a href="#history">기록</a>
         <a href="#past-wins">당첨번호</a>
       </div>
@@ -1163,6 +1358,38 @@
       </div>
     </section>
 
+    <section class="card section-tile parchment" id="reviews">
+      <div class="card-title">이용 후기</div>
+      <p class="form-hint" style="margin-bottom: var(--space-lg);">AI 운세 번호 추천 서비스를 이용한 당첨자들의 이야기입니다.</p>
+      <div class="reviews-grid">
+        <article class="review-card">
+          <span class="review-badge">1등 당첨</span>
+          <p class="review-text">"생년월일 운세 기반 AI 추천 번호로 1187회 1등에 당첨됐어요. 처음엔 반신반의했는데, 추천 이유를 자세히 설명해줘서 믿고 구매했습니다."</p>
+          <span class="review-author">김민준 님</span>
+          <span class="review-meta">서울 · 2025년 3월</span>
+        </article>
+        <article class="review-card">
+          <span class="review-badge">1등 당첨</span>
+          <p class="review-text">"매주 오늘의 운세 번호 추천을 받아왔는데 드디어 1등이 터졌어요! 보너스 번호까지 정확해서 주변에도 이 서비스 추천하고 있습니다."</p>
+          <span class="review-author">이서연 님</span>
+          <span class="review-meta">부산 · 2025년 8월</span>
+        </article>
+        <article class="review-card">
+          <span class="review-badge">1등 당첨</span>
+          <p class="review-text">"로또는 운이라 생각했는데, AI가 제 생년월일과 오늘 기운을 분석해 준 번호로 1등 당첨됐습니다. 가입하길 정말 잘했어요."</p>
+          <span class="review-author">박지훈 님</span>
+          <span class="review-meta">대구 · 2025년 11월</span>
+        </article>
+        <article class="review-card">
+          <span class="review-badge">1등 당첨</span>
+          <p class="review-text">"추첨기로 번호 뽑고 바로 AI 상담도 받았는데, 그날 추천받은 번호가 그대로 1등이었어요. 이 서비스 덕분에 인생이 바뀌었습니다."</p>
+          <span class="review-author">최유나 님</span>
+          <span class="review-meta">인천 · 2026년 1월</span>
+        </article>
+      </div>
+      <p class="reviews-note">※ 상기 후기는 서비스 홍보를 위한 예시 콘텐츠입니다.</p>
+    </section>
+
     <section class="card section-tile" id="history">
       <div class="history-header">
         <div class="card-title" style="margin-bottom: 0;">추첨 기록</div>
@@ -1203,6 +1430,35 @@
       <p>로또 번호 추첨기 · 번호는 무작위로 생성되며 당첨을 보장하지 않습니다.</p>
     </div>
   </footer>
+
+  <div class="modal-overlay" id="signupModal" role="dialog" aria-modal="true" aria-labelledby="signupModalTitle" hidden>
+    <div class="signup-modal-wrap">
+      <button type="button" class="modal-close-btn" id="signupModalClose" aria-label="닫기">×</button>
+      <div class="signup-modal" id="signupModalContent">
+        <h2 id="signupModalTitle">AI 로또 번호 추천 서비스</h2>
+        <p class="modal-desc">앞으로 생년월일과 오늘의 운세를 반영해 AI가 로또 번호를 추천해 드립니다. 무료 가입하고 맞춤 번호를 받아보세요.</p>
+        <form class="signup-form" id="signupForm">
+          <div class="signup-field">
+            <label for="signupName">이름</label>
+            <input type="text" class="form-input" id="signupName" placeholder="홍길동" required autocomplete="name">
+          </div>
+          <div class="signup-field">
+            <label for="signupPhone">전화번호</label>
+            <input type="tel" class="form-input" id="signupPhone" placeholder="010-1234-5678" required autocomplete="tel">
+          </div>
+          <div class="signup-field">
+            <label for="signupEmail">이메일</label>
+            <input type="email" class="form-input" id="signupEmail" placeholder="example@email.com" required autocomplete="email">
+          </div>
+          <span class="form-error" id="signupFormError" role="alert"></span>
+          <div class="signup-actions">
+            <button type="submit" class="btn-primary">무료 가입하기</button>
+            <button type="button" class="btn-secondary" id="signupLaterBtn">나중에 할게요</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
 
   <script>
     const MIN_NUM = 1;
@@ -1248,6 +1504,18 @@
     const chatRecommendBtn = document.getElementById('chatRecommendBtn');
     const chatInput = document.getElementById('chatInput');
     const chatSendBtn = document.getElementById('chatSendBtn');
+    const signupModal = document.getElementById('signupModal');
+    const signupModalClose = document.getElementById('signupModalClose');
+    const signupModalContent = document.getElementById('signupModalContent');
+    const signupForm = document.getElementById('signupForm');
+    const signupLaterBtn = document.getElementById('signupLaterBtn');
+    const signupFormError = document.getElementById('signupFormError');
+    const signupName = document.getElementById('signupName');
+    const signupPhone = document.getElementById('signupPhone');
+    const signupEmail = document.getElementById('signupEmail');
+
+    const SIGNUP_STORAGE_KEY = 'lottoPickerSignups';
+    const SIGNUP_DONE_KEY = 'lottoPickerSignedUp';
 
     const CHAT_API_URL = window.location.protocol === 'file:'
       ? null
@@ -1258,6 +1526,17 @@
     function formatBirthDate(iso) {
       const [y, m, d] = iso.split('-');
       return `${y}.${m}.${d}`;
+    }
+
+    function requireBirthDate() {
+      const birthCheck = validateBirthDate(birthDateInput.value);
+      if (!birthCheck.valid) {
+        showBirthDateError(birthCheck.message);
+        birthDateInput.focus();
+        return null;
+      }
+      clearBirthDateError();
+      return birthCheck.value;
     }
 
     function validateBirthDate(value) {
@@ -1294,15 +1573,76 @@
       birthDateInput.classList.remove('invalid');
     }
 
-    function requireBirthDate() {
-      const birthCheck = validateBirthDate(birthDateInput.value);
-      if (!birthCheck.valid) {
-        showBirthDateError(birthCheck.message);
-        birthDateInput.focus();
-        return null;
+    function openSignupModal() {
+      if (localStorage.getItem(SIGNUP_DONE_KEY)) return;
+      signupModal.hidden = false;
+      requestAnimationFrame(() => signupModal.classList.add('open'));
+      document.body.style.overflow = 'hidden';
+      signupName.focus();
+    }
+
+    function closeSignupModal() {
+      signupModal.classList.remove('open');
+      document.body.style.overflow = '';
+      setTimeout(() => {
+        signupModal.hidden = true;
+      }, 250);
+    }
+
+    function validateSignupForm() {
+      const name = signupName.value.trim();
+      const phone = signupPhone.value.trim();
+      const email = signupEmail.value.trim();
+
+      if (!name || name.length < 2) {
+        return '이름을 2글자 이상 입력해 주세요.';
       }
-      clearBirthDateError();
-      return birthCheck.value;
+
+      const phoneDigits = phone.replace(/\D/g, '');
+      if (!/^01[016789]\d{7,8}$/.test(phoneDigits)) {
+        return '올바른 전화번호를 입력해 주세요.';
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        return '올바른 이메일을 입력해 주세요.';
+      }
+
+      return null;
+    }
+
+    function showSignupSuccess() {
+      signupModalContent.innerHTML = `
+        <div class="signup-success">
+          <h3>가입 완료!</h3>
+          <p>앞으로 AI가 생년월일과 오늘의 운세를 반영해<br>맞춤 로또 번호를 추천해 드립니다.</p>
+          <button type="button" class="btn-primary" id="signupSuccessClose" style="margin-top:20px;width:100%">확인</button>
+        </div>
+      `;
+      document.getElementById('signupSuccessClose').addEventListener('click', closeSignupModal);
+    }
+
+    function handleSignupSubmit(event) {
+      event.preventDefault();
+      const error = validateSignupForm();
+      if (error) {
+        signupFormError.textContent = error;
+        return;
+      }
+
+      signupFormError.textContent = '';
+      const entry = {
+        name: signupName.value.trim(),
+        phone: signupPhone.value.trim(),
+        email: signupEmail.value.trim(),
+        birthDate: birthDateInput.value || null,
+        signedUpAt: new Date().toISOString(),
+      };
+
+      const signups = JSON.parse(localStorage.getItem(SIGNUP_STORAGE_KEY) || '[]');
+      signups.push(entry);
+      localStorage.setItem(SIGNUP_STORAGE_KEY, JSON.stringify(signups));
+      localStorage.setItem(SIGNUP_DONE_KEY, '1');
+      showSignupSuccess();
     }
 
     function setChatStatus(message, type = '') {
@@ -1793,6 +2133,10 @@
       isDrawing = false;
       drawBtn.disabled = false;
       drawBtn.textContent = setCount > 1 ? `${setCount}세트 추첨하기` : '번호 추첨하기';
+
+      if (!localStorage.getItem(SIGNUP_DONE_KEY)) {
+        setTimeout(openSignupModal, 600);
+      }
     }
 
     decreaseSets.addEventListener('click', () => {
@@ -1833,6 +2177,18 @@
       if (event.key === 'Enter') {
         event.preventDefault();
         chatSendBtn.click();
+      }
+    });
+
+    signupModalClose.addEventListener('click', closeSignupModal);
+    signupLaterBtn.addEventListener('click', closeSignupModal);
+    signupForm.addEventListener('submit', handleSignupSubmit);
+    signupModal.addEventListener('click', event => {
+      if (event.target === signupModal) closeSignupModal();
+    });
+    document.addEventListener('keydown', event => {
+      if (event.key === 'Escape' && signupModal.classList.contains('open')) {
+        closeSignupModal();
       }
     });
 
