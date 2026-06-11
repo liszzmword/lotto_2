@@ -1767,7 +1767,13 @@
       try {
         return JSON.parse(text);
       } catch {
-        throw new Error('서버 응답을 해석하지 못했습니다. Vercel에 배포했는지 확인해 주세요.');
+        const preview = text.replace(/\s+/g, ' ').trim().slice(0, 100);
+        if (response.status === 404) {
+          throw new Error('가입 API를 찾을 수 없습니다(404). Vercel에 api/signup.js가 배포됐는지 확인해 주세요.');
+        }
+        throw new Error(
+          `서버 응답 오류 (${response.status}). API가 JSON이 아닌 응답을 반환했습니다.${preview ? ` ${preview}` : ''}`
+        );
       }
     }
 
