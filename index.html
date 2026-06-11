@@ -1249,7 +1249,9 @@
     const chatInput = document.getElementById('chatInput');
     const chatSendBtn = document.getElementById('chatSendBtn');
 
-    const CHAT_API_URL = '/api/chat';
+    const CHAT_API_URL = window.location.protocol === 'file:'
+      ? null
+      : new URL('/api/chat', window.location.origin).href;
 
     birthDateInput.max = new Date().toISOString().slice(0, 10);
 
@@ -1306,6 +1308,30 @@
     function setChatStatus(message, type = '') {
       chatStatus.textContent = message;
       chatStatus.className = `chat-status${type ? ` ${type}` : ''}`;
+      if (message) {
+        chatStatus.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }
+
+    function appendChatError(message) {
+      clearChatEmptyState();
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-message assistant';
+      bubble.style.borderColor = 'var(--error)';
+      bubble.style.color = 'var(--error)';
+      bubble.textContent = message;
+      chatMessages.appendChild(bubble);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function parseJsonResponse(response) {
+      const text = await response.text();
+      if (!text) return {};
+      try {
+        return JSON.parse(text);
+      } catch {
+        throw new Error('서버 응답을 해석하지 못했습니다. Vercel에 배포했는지 확인해 주세요.');
+      }
     }
 
     function clearChatEmptyState() {
@@ -1375,7 +1401,14 @@
 
       const birthDate = requireBirthDate();
       if (!birthDate) {
-        setChatStatus('먼저 생년월일을 입력해 주세요.', 'error');
+        setChatStatus('먼저 위쪽 추첨 설정에서 생년월일을 입력해 주세요.', 'error');
+        document.getElementById('controls')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+
+      if (!CHAT_API_URL) {
+        setChatStatus('AI 상담은 Vercel 배포 후에 사용할 수 있습니다. (로컬 HTML 파일로는 API가 동작하지 않습니다)', 'error');
+        appendChatError('Vercel에 프로젝트를 배포하고 GEMINI_API_KEY 환경변수를 설정해 주세요.');
         return;
       }
 
@@ -1397,9 +1430,14 @@
           }),
         });
 
-        const data = await response.json();
+        const data = await parseJsonResponse(response);
+
         if (!response.ok) {
-          throw new Error(data.error || '추천 요청에 실패했습니다.');
+          throw new Error(data.error || `추천 요청에 실패했습니다. (${response.status})`);
+        }
+
+        if (!Array.isArray(data.numbers) || data.numbers.length !== 6 || !data.bonus) {
+          throw new Error('AI 응답 형식이 올바르지 않습니다. 다시 시도해 주세요.');
         }
 
         appendAssistantRecommendation(data);
@@ -1407,7 +1445,12 @@
         chatHistory.push({ role: 'assistant', content: assistantText });
         setChatStatus('');
       } catch (error) {
-        setChatStatus(error.message || 'AI 상담 중 오류가 발생했습니다.', 'error');
+        chatHistory.pop();
+        const lastBubble = chatMessages.lastElementChild;
+        if (lastBubble) lastBubble.remove();
+        const errorMessage = error.message || 'AI 상담 중 오류가 발생했습니다.';
+        setChatStatus(errorMessage, 'error');
+        appendChatError(errorMessage);
       } finally {
         setChatLoading(false);
       }
