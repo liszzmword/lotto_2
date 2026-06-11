@@ -757,6 +757,74 @@
       border-color: var(--ink);
     }
 
+    .form-input {
+      width: 100%;
+      height: 44px;
+      padding: 12px 20px;
+      font-family: inherit;
+      font-size: 17px;
+      line-height: 1.47;
+      letter-spacing: -0.374px;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: var(--rounded-pill);
+      background: var(--canvas);
+      color: var(--ink);
+      transition: border-color 0.15s;
+    }
+
+    .form-input::placeholder {
+      color: var(--ink-muted-48);
+    }
+
+    .form-input:focus {
+      outline: none;
+      border-color: var(--ink);
+    }
+
+    .form-input.invalid {
+      border-color: var(--error);
+    }
+
+    .birthdate-field {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-xs);
+    }
+
+    .birthdate-field label {
+      font-size: 17px;
+      font-weight: 600;
+      line-height: 1.24;
+      letter-spacing: -0.374px;
+      color: var(--ink);
+    }
+
+    .form-hint {
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: -0.12px;
+      color: var(--ink-muted-48);
+    }
+
+    .form-error {
+      font-size: 12px;
+      font-weight: 400;
+      line-height: 1.3;
+      letter-spacing: -0.12px;
+      color: var(--error);
+      min-height: 16px;
+    }
+
+    .history-item .birth-label {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: -0.12px;
+      color: var(--primary);
+      min-width: 5.5rem;
+      white-space: nowrap;
+    }
+
     .past-wins-list {
       display: flex;
       flex-direction: column;
@@ -949,6 +1017,12 @@
 
     <section class="card section-tile parchment controls" id="controls">
       <div class="card-title" style="margin-bottom: var(--space-md);">추첨 설정</div>
+      <div class="birthdate-field">
+        <label for="birthDate">생년월일</label>
+        <input type="date" class="form-input" id="birthDate" max="">
+        <span class="form-hint">추첨 전에 생년월일을 입력해 주세요.</span>
+        <span class="form-error" id="birthDateError" role="alert" aria-live="polite"></span>
+      </div>
       <div class="control-row">
         <label for="setCount">한 번에 추첨할 세트 수</label>
         <div class="stepper">
@@ -1036,6 +1110,49 @@
     const pastWinsMeta = document.getElementById('pastWinsMeta');
     const drawSearch = document.getElementById('drawSearch');
     const numberFilter = document.getElementById('numberFilter');
+    const birthDateInput = document.getElementById('birthDate');
+    const birthDateError = document.getElementById('birthDateError');
+
+    birthDateInput.max = new Date().toISOString().slice(0, 10);
+
+    function formatBirthDate(iso) {
+      const [y, m, d] = iso.split('-');
+      return `${y}.${m}.${d}`;
+    }
+
+    function validateBirthDate(value) {
+      if (!value) {
+        return { valid: false, message: '생년월일을 입력해 주세요.' };
+      }
+
+      const date = new Date(`${value}T00:00:00`);
+      if (Number.isNaN(date.getTime())) {
+        return { valid: false, message: '올바른 날짜를 입력해 주세요.' };
+      }
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (date > today) {
+        return { valid: false, message: '미래 날짜는 입력할 수 없습니다.' };
+      }
+
+      const minDate = new Date('1900-01-01T00:00:00');
+      if (date < minDate) {
+        return { valid: false, message: '1900년 이후 날짜를 입력해 주세요.' };
+      }
+
+      return { valid: true, value, display: formatBirthDate(value) };
+    }
+
+    function showBirthDateError(message) {
+      birthDateError.textContent = message;
+      birthDateInput.classList.add('invalid');
+    }
+
+    function clearBirthDateError() {
+      birthDateError.textContent = '';
+      birthDateInput.classList.remove('invalid');
+    }
 
     function getBallColorClass(num) {
       if (num <= 10) return 'yellow';
@@ -1318,11 +1435,16 @@
         label.className = 'set-label';
         label.textContent = `#${history.length - idx}`;
 
+        const birthLabel = document.createElement('span');
+        birthLabel.className = 'birth-label';
+        birthLabel.textContent = entry.birthDate ? formatBirthDate(entry.birthDate) : '';
+
         const miniBalls = document.createElement('div');
         miniBalls.className = 'mini-balls';
         appendBallSet(miniBalls, entry.numbers, entry.bonus);
 
         item.appendChild(label);
+        if (entry.birthDate) item.appendChild(birthLabel);
         item.appendChild(miniBalls);
         historyList.appendChild(item);
       });
@@ -1340,13 +1462,26 @@
 
     async function draw() {
       if (isDrawing) return;
+
+      const birthCheck = validateBirthDate(birthDateInput.value);
+      if (!birthCheck.valid) {
+        showBirthDateError(birthCheck.message);
+        birthDateInput.focus();
+        return;
+      }
+      clearBirthDateError();
+
       isDrawing = true;
       drawBtn.disabled = true;
       drawBtn.textContent = '추첨 중...';
 
       const newSets = [];
       for (let i = 0; i < setCount; i++) {
-        newSets.push({ ...generateSet(), time: Date.now() });
+        newSets.push({
+          ...generateSet(),
+          time: Date.now(),
+          birthDate: birthCheck.value,
+        });
       }
 
       await animateDraw(newSets[0]);
@@ -1376,6 +1511,15 @@
     });
 
     drawBtn.addEventListener('click', draw);
+
+    birthDateInput.addEventListener('input', () => {
+      if (birthDateInput.value) clearBirthDateError();
+    });
+
+    birthDateInput.addEventListener('change', () => {
+      const birthCheck = validateBirthDate(birthDateInput.value);
+      if (birthCheck.valid) clearBirthDateError();
+    });
 
     clearHistoryBtn.addEventListener('click', () => {
       history = [];
