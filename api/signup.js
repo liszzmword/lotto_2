@@ -39,8 +39,31 @@ function validatePayload(body) {
   };
 }
 
+function normalizeSupabaseUrl(raw) {
+  const input = String(raw || '').trim();
+  if (!input) return '';
+
+  let candidate = input;
+  if (!/^https?:\/\//i.test(candidate)) {
+    candidate = `https://${candidate}`;
+  }
+
+  try {
+    const parsed = new URL(candidate);
+    const host = parsed.hostname.toLowerCase();
+
+    if (host.endsWith('.supabase.co')) {
+      return `https://${host}`;
+    }
+  } catch {
+    return '';
+  }
+
+  return '';
+}
+
 function getSupabaseConfig() {
-  const url = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+  const url = normalizeSupabaseUrl(process.env.SUPABASE_URL);
   const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
 
   return { url, key };
@@ -106,6 +129,10 @@ function toClientError(message) {
     return 'Supabase \uC800\uC7A5\uC5D0 \uC2E4\uD328\uD588\uC2B5\uB2C8\uB2E4. \uD14C\uC774\uBE14\uACFC API \uD0A4 \uC124\uC815\uC744 \uD655\uC778\uD574 \uC8FC\uC138\uC694.';
   }
 
+  if (message === 'INVALID_SUPABASE_URL') {
+    return 'SUPABASE_URL \uD615\uC2DD\uC774 \uC62C\uBC14\uB974\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. https://\uD504\uB85C\uC81D\uD2B8ID.supabase.co \uD615\uD0DC\uB85C \uB123\uC5B4 \uC8FC\uC138\uC694. (/rest/v1 \uC81C\uC678)';
+  }
+
   return message;
 }
 
@@ -130,9 +157,9 @@ module.exports = async (req, res) => {
     });
   }
 
-  if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(supabaseUrl)) {
+  if (!supabaseUrl) {
     return res.status(500).json({
-      error: 'Invalid SUPABASE_URL format. Example: https://abcdefgh.supabase.co',
+      error: toClientError('INVALID_SUPABASE_URL'),
     });
   }
 
