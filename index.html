@@ -1514,12 +1514,15 @@
     const signupPhone = document.getElementById('signupPhone');
     const signupEmail = document.getElementById('signupEmail');
 
-    const SIGNUP_STORAGE_KEY = 'lottoPickerSignups';
     const SIGNUP_DONE_KEY = 'lottoPickerSignedUp';
 
     const CHAT_API_URL = window.location.protocol === 'file:'
       ? null
       : new URL('/api/chat', window.location.origin).href;
+
+    const SIGNUP_API_URL = window.location.protocol === 'file:'
+      ? null
+      : new URL('/api/signup', window.location.origin).href;
 
     birthDateInput.max = new Date().toISOString().slice(0, 10);
 
@@ -1621,7 +1624,7 @@
       document.getElementById('signupSuccessClose').addEventListener('click', closeSignupModal);
     }
 
-    function handleSignupSubmit(event) {
+    async function handleSignupSubmit(event) {
       event.preventDefault();
       const error = validateSignupForm();
       if (error) {
@@ -1629,20 +1632,42 @@
         return;
       }
 
-      signupFormError.textContent = '';
-      const entry = {
-        name: signupName.value.trim(),
-        phone: signupPhone.value.trim(),
-        email: signupEmail.value.trim(),
-        birthDate: birthDateInput.value || null,
-        signedUpAt: new Date().toISOString(),
-      };
+      if (!SIGNUP_API_URL) {
+        signupFormError.textContent = '가입 기능은 Vercel 배포 후에 사용할 수 있습니다.';
+        return;
+      }
 
-      const signups = JSON.parse(localStorage.getItem(SIGNUP_STORAGE_KEY) || '[]');
-      signups.push(entry);
-      localStorage.setItem(SIGNUP_STORAGE_KEY, JSON.stringify(signups));
-      localStorage.setItem(SIGNUP_DONE_KEY, '1');
-      showSignupSuccess();
+      signupFormError.textContent = '';
+      const submitBtn = signupForm.querySelector('button[type="submit"]');
+      const originalText = submitBtn.textContent;
+      submitBtn.disabled = true;
+      submitBtn.textContent = '가입 중...';
+
+      try {
+        const response = await fetch(SIGNUP_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: signupName.value.trim(),
+            phone: signupPhone.value.trim(),
+            email: signupEmail.value.trim(),
+            birthDate: birthDateInput.value || null,
+          }),
+        });
+
+        const data = await parseJsonResponse(response);
+        if (!response.ok) {
+          throw new Error(data.error || `가입에 실패했습니다. (${response.status})`);
+        }
+
+        localStorage.setItem(SIGNUP_DONE_KEY, '1');
+        showSignupSuccess();
+      } catch (submitError) {
+        signupFormError.textContent = submitError.message || '가입 중 오류가 발생했습니다.';
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.textContent = originalText;
+      }
     }
 
     function setChatStatus(message, type = '') {
