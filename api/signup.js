@@ -39,6 +39,48 @@ function validatePayload(body) {
   };
 }
 
+function getSupabaseConfig() {
+  const url = (process.env.SUPABASE_URL || '').trim().replace(/\/+$/, '');
+  const key = (process.env.SUPABASE_SERVICE_ROLE_KEY || '').trim();
+
+  return { url, key };
+}
+
+function parseSupabaseError(status, errorText) {
+  let message = '';
+  let code = '';
+
+  try {
+    const parsed = JSON.parse(errorText);
+    message = parsed.message || parsed.error || parsed.hint || '';
+    code = parsed.code || '';
+  } catch {
+    message = errorText;
+  }
+
+  if (status === 401 || /invalid api key|jwt/i.test(message)) {
+    return 'Supabase API ?? ???? ????. Vercel? SUPABASE_SERVICE_ROLE_KEY? service_role(??) ?? ????? ??? ???.';
+  }
+
+  if (status === 404 || /could not find the table|schema cache/i.test(message)) {
+    return 'Supabase? signups ???? ?? ? ????. SQL Editor?? schema.sql? ?????, URL? ?? ?????? ??? ???.';
+  }
+
+  if (/row-level security|permission denied/i.test(message)) {
+    return 'Supabase ?? ?????. anon ?? ?? service_role ?? ???? ???.';
+  }
+
+  if (status === 409 || code === '23505' || /duplicate|unique/i.test(message)) {
+    return '?? ??? ??????.';
+  }
+
+  if (message) {
+    return `Supabase ?? ??: ${message}`;
+  }
+
+  return 'Supabase ??? ??????. ???? API ? ??? ??? ???.';
+}
+
 module.exports = async (req, res) => {
   if (req.method === 'OPTIONS') {
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -50,12 +92,17 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: 'POST ??? ?????.' });
   }
 
-  const supabaseUrl = process.env.SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const { url: supabaseUrl, key: supabaseKey } = getSupabaseConfig();
 
   if (!supabaseUrl || !supabaseKey) {
     return res.status(500).json({
       error: 'Supabase ????(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)? ???? ?????.',
+    });
+  }
+
+  if (!/^https:\/\/[a-z0-9-]+\.supabase\.co$/i.test(supabaseUrl)) {
+    return res.status(500).json({
+      error: 'SUPABASE_URL ??? ???? ????. ?: https://abcdefgh.supabase.co',
     });
   }
 
@@ -83,14 +130,9 @@ module.exports = async (req, res) => {
 
     if (!response.ok) {
       const errorText = await response.text();
-
-      if (response.status === 409 || /duplicate|unique/i.test(errorText)) {
-        return res.status(409).json({ error: '?? ??? ??????.' });
-      }
-
-      return res.status(502).json({
-        error: 'Supabase ??? ??????. ??? ??? ??? ???.',
-      });
+      const error = parseSupabaseError(response.status, errorText);
+      const status = /?? ???/.test(error) ? 409 : 502;
+      return res.status(status).json({ error });
     }
 
     return res.status(201).json({ success: true });
