@@ -825,6 +825,116 @@
       white-space: nowrap;
     }
 
+    .chat-panel {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+
+    .chat-messages {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+      max-height: 420px;
+      overflow-y: auto;
+      padding: var(--space-xs);
+    }
+
+    .chat-messages::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .chat-messages::-webkit-scrollbar-thumb {
+      background: var(--hairline);
+      border-radius: 3px;
+    }
+
+    .chat-empty {
+      text-align: center;
+      color: var(--ink-muted-48);
+      font-size: 14px;
+      line-height: 1.43;
+      letter-spacing: -0.224px;
+      padding: 1.5rem 0.5rem;
+    }
+
+    .chat-message {
+      max-width: 92%;
+      padding: 12px 16px;
+      border-radius: var(--rounded-lg);
+      font-size: 14px;
+      line-height: 1.43;
+      letter-spacing: -0.224px;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .chat-message.user {
+      align-self: flex-end;
+      background: var(--primary);
+      color: var(--on-primary);
+    }
+
+    .chat-message.assistant {
+      align-self: flex-start;
+      background: var(--canvas-parchment);
+      border: 1px solid var(--hairline);
+      color: var(--ink);
+    }
+
+    .chat-message.assistant .chat-fortune {
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: -0.12px;
+      color: var(--primary);
+      margin-bottom: 8px;
+    }
+
+    .chat-message.assistant .chat-balls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+      align-items: center;
+      margin: 10px 0;
+    }
+
+    .chat-actions {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-sm);
+    }
+
+    .chat-input-row {
+      display: flex;
+      gap: var(--space-xs);
+      align-items: center;
+    }
+
+    .chat-input-row .form-input {
+      flex: 1;
+    }
+
+    .chat-input-row .btn-secondary {
+      flex-shrink: 0;
+      min-width: 72px;
+    }
+
+    .chat-status {
+      font-size: 12px;
+      line-height: 1.3;
+      letter-spacing: -0.12px;
+      color: var(--ink-muted-48);
+      min-height: 16px;
+    }
+
+    .chat-status.error {
+      color: var(--error);
+    }
+
+    .chat-status.loading {
+      color: var(--primary);
+    }
+
     .past-wins-list {
       display: flex;
       flex-direction: column;
@@ -978,6 +1088,7 @@
       <span class="nav-logo">Lotto Picker</span>
       <div class="nav-links">
         <a href="#draw">추첨</a>
+        <a href="#chatbot">AI 상담</a>
         <a href="#history">기록</a>
         <a href="#past-wins">당첨번호</a>
       </div>
@@ -1032,6 +1143,24 @@
         </div>
       </div>
       <button type="button" class="btn-primary" id="drawBtn">번호 추첨하기</button>
+    </section>
+
+    <section class="card section-tile" id="chatbot">
+      <div class="card-title">AI 운세 번호 상담</div>
+      <p class="form-hint" style="margin-bottom: var(--space-sm);">생년월일과 오늘의 운세를 바탕으로 번호를 추천하고 이유를 설명합니다.</p>
+      <div class="chat-panel">
+        <div class="chat-messages" id="chatMessages" aria-live="polite">
+          <div class="chat-empty">생년월일을 입력한 뒤 아래 버튼으로 번호 추천을 받아 보세요.</div>
+        </div>
+        <div class="chat-status" id="chatStatus"></div>
+        <div class="chat-actions">
+          <button type="button" class="btn-primary" id="chatRecommendBtn">오늘의 번호 추천 받기</button>
+          <div class="chat-input-row">
+            <input type="text" class="form-input" id="chatInput" placeholder="추가 질문을 입력하세요 (선택)" maxlength="300">
+            <button type="button" class="btn-secondary" id="chatSendBtn">전송</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="card section-tile" id="history">
@@ -1095,6 +1224,8 @@
     let isDrawing = false;
     let history = [];
     let pastWins = [];
+    let chatHistory = [];
+    let isChatLoading = false;
 
     const ballsDisplay = document.getElementById('ballsDisplay');
     const drum = document.getElementById('drum');
@@ -1112,6 +1243,13 @@
     const numberFilter = document.getElementById('numberFilter');
     const birthDateInput = document.getElementById('birthDate');
     const birthDateError = document.getElementById('birthDateError');
+    const chatMessages = document.getElementById('chatMessages');
+    const chatStatus = document.getElementById('chatStatus');
+    const chatRecommendBtn = document.getElementById('chatRecommendBtn');
+    const chatInput = document.getElementById('chatInput');
+    const chatSendBtn = document.getElementById('chatSendBtn');
+
+    const CHAT_API_URL = '/api/chat';
 
     birthDateInput.max = new Date().toISOString().slice(0, 10);
 
@@ -1152,6 +1290,127 @@
     function clearBirthDateError() {
       birthDateError.textContent = '';
       birthDateInput.classList.remove('invalid');
+    }
+
+    function requireBirthDate() {
+      const birthCheck = validateBirthDate(birthDateInput.value);
+      if (!birthCheck.valid) {
+        showBirthDateError(birthCheck.message);
+        birthDateInput.focus();
+        return null;
+      }
+      clearBirthDateError();
+      return birthCheck.value;
+    }
+
+    function setChatStatus(message, type = '') {
+      chatStatus.textContent = message;
+      chatStatus.className = `chat-status${type ? ` ${type}` : ''}`;
+    }
+
+    function clearChatEmptyState() {
+      const empty = chatMessages.querySelector('.chat-empty');
+      if (empty) empty.remove();
+    }
+
+    function appendChatBubble(role, content) {
+      clearChatEmptyState();
+      const bubble = document.createElement('div');
+      bubble.className = `chat-message ${role}`;
+      bubble.textContent = content;
+      chatMessages.appendChild(bubble);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+      return bubble;
+    }
+
+    function appendAssistantRecommendation(data) {
+      clearChatEmptyState();
+      const bubble = document.createElement('div');
+      bubble.className = 'chat-message assistant';
+
+      if (data.fortuneSummary) {
+        const fortune = document.createElement('div');
+        fortune.className = 'chat-fortune';
+        fortune.textContent = `오늘의 운세 · ${data.fortuneSummary}`;
+        bubble.appendChild(fortune);
+      }
+
+      const ballsWrap = document.createElement('div');
+      ballsWrap.className = 'chat-balls';
+      data.numbers.forEach(num => ballsWrap.appendChild(createMiniBall(num)));
+      const plus = document.createElement('span');
+      plus.className = 'history-plus';
+      plus.textContent = '+';
+      ballsWrap.appendChild(plus);
+      ballsWrap.appendChild(createMiniBall(data.bonus));
+      bubble.appendChild(ballsWrap);
+
+      const body = document.createElement('div');
+      body.textContent = data.reply || data.explanation;
+      bubble.appendChild(body);
+
+      if (data.explanation && data.reply && data.explanation !== data.reply) {
+        const detail = document.createElement('div');
+        detail.style.marginTop = '10px';
+        detail.style.color = 'var(--ink-muted-80)';
+        detail.textContent = data.explanation;
+        bubble.appendChild(detail);
+      }
+
+      chatMessages.appendChild(bubble);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function setChatLoading(loading) {
+      isChatLoading = loading;
+      chatRecommendBtn.disabled = loading;
+      chatSendBtn.disabled = loading;
+      chatInput.disabled = loading;
+      chatRecommendBtn.textContent = loading ? '추천 생성 중...' : '오늘의 번호 추천 받기';
+      setChatStatus(loading ? 'AI가 운세와 번호를 분석하고 있습니다...' : '', loading ? 'loading' : '');
+    }
+
+    async function requestChatRecommendation(message = '') {
+      if (isChatLoading) return;
+
+      const birthDate = requireBirthDate();
+      if (!birthDate) {
+        setChatStatus('먼저 생년월일을 입력해 주세요.', 'error');
+        return;
+      }
+
+      const trimmedMessage = message.trim();
+      const promptMessage = trimmedMessage || '오늘의 운세를 반영해서 로또 번호 6개와 보너스 1개를 추천해 주세요.';
+      appendChatBubble('user', promptMessage);
+      chatHistory.push({ role: 'user', content: promptMessage });
+
+      setChatLoading(true);
+
+      try {
+        const response = await fetch(CHAT_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            birthDate,
+            message: promptMessage,
+            history: chatHistory.slice(0, -1),
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data.error || '추천 요청에 실패했습니다.');
+        }
+
+        appendAssistantRecommendation(data);
+        const assistantText = data.reply || `${data.fortuneSummary}\n추천 번호: ${data.numbers.join(', ')} + ${data.bonus}\n${data.explanation}`;
+        chatHistory.push({ role: 'assistant', content: assistantText });
+        setChatStatus('');
+      } catch (error) {
+        setChatStatus(error.message || 'AI 상담 중 오류가 발생했습니다.', 'error');
+      } finally {
+        setChatLoading(false);
+      }
     }
 
     function getBallColorClass(num) {
@@ -1470,7 +1729,6 @@
         return;
       }
       clearBirthDateError();
-
       isDrawing = true;
       drawBtn.disabled = true;
       drawBtn.textContent = '추첨 중...';
@@ -1519,6 +1777,20 @@
     birthDateInput.addEventListener('change', () => {
       const birthCheck = validateBirthDate(birthDateInput.value);
       if (birthCheck.valid) clearBirthDateError();
+    });
+
+    chatRecommendBtn.addEventListener('click', () => requestChatRecommendation());
+    chatSendBtn.addEventListener('click', () => {
+      const message = chatInput.value.trim();
+      if (!message) return;
+      chatInput.value = '';
+      requestChatRecommendation(message);
+    });
+    chatInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        chatSendBtn.click();
+      }
     });
 
     clearHistoryBtn.addEventListener('click', () => {
